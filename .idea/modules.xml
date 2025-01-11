@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/chrome-json-preety.iml" filepath="$PROJECT_DIR$/chrome-json-preety.iml" />
+      <module fileurl="file://$PROJECT_DIR$/chrome-json-pretty.iml" filepath="$PROJECT_DIR$/chrome-json-pretty.iml" />
     </modules>
   </component>
 </project>

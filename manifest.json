@@ -1,16 +1,26 @@
 {
   "manifest_version": 3,
-  "name": "My First Extension",
+  "name": "Pretty JSON Viewer",
   "version": "1.0",
-  "description": "새 탭에 특정 웹사이트를 여는 Chrome 플러그인",
-  "background": {
-    "service_worker": "background.js"
-  },
-  "action": {
-    "default_icon": "icon.png",
-    "default_title": "Open Google"
-  },
+  "description": "복사된 데이터가 JSON인지 확인하고 화면에 보기 좋게 렌더링합니다.",
   "permissions": [
-    "tabs"
-  ]
+    "clipboardRead"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    },
+    "default_title": "JSON Pretty Formatter",
+    "default_popup": "popup.html"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
 }
