@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "My First Extension",
+  "version": "1.0",
+  "description": "새 탭에 특정 웹사이트를 여는 Chrome 플러그인",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_icon": "icon.png",
+    "default_title": "Open Google"
+  },
+  "permissions": [
+    "tabs"
+  ]
+}
