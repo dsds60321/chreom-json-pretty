@@ -3,124 +3,171 @@ document.addEventListener("DOMContentLoaded", () => {
     const outputElement = document.getElementById("output");
     const prettyButton = document.getElementById("prettyBtn");
     const copyButton = document.getElementById("copyBtn");
+    const viewPopupButton = document.getElementById("viewPopupBtn");
+
 
     // "Pretty JSON" 버튼 클릭 이벤트
     prettyButton.addEventListener("click", () => {
         const inputText = jsonInput.value.trim(); // 입력된 JSON 문자열 가져오기
 
+        clearErrorMessage(); // 기존 오류 초기화
+
         if (!inputText) {
-            outputElement.innerHTML = "<p class='error'>Please enter a JSON string.</p>";
+            displayErrorMessage("Please enter a JSON string."); // 오류 표시
             copyButton.style.display = "none"; // 복사 버튼 숨기기
+            viewPopupButton.style.display = "none"; // 복사 버튼 숨기기
             return;
         }
 
         try {
-            // 1. 문자열 확인 및 처리
+            // 1. JSON 문자열 정리 및 처리
             const formattedText = detectAndProcessJSONString(inputText);
 
-            // 2. 키와 값 자동 수정 (필요 시)
-            const fixedJSON = fixInvalidJSON(formattedText);
-
-            // 3. Pretty JSON 변환
-            const prettyJSON = prettyFormatJSON(fixedJSON);
+            // 2. JSON 포맷 변환
+            const prettyJSON = prettyFormatJSON(formattedText);
 
             outputElement.innerHTML = `<pre>${prettyJSON}</pre>`; // 변환된 JSON 출력
             copyButton.style.display = "block"; // 복사 버튼 표시
+            viewPopupButton.style.display = "block"; // 복사 버튼 표시
 
             // "Copy" 버튼 클릭 이벤트 정의
-            copyButton.onclick = () => { // 기존 `addEventListener` 대신 `onclick` 사용
+            copyButton.onclick = () => {
                 navigator.clipboard.writeText(prettyJSON)
-                    .then(() => alert("copy completed!")) // 알림 출력
-                    .catch((err) => console.error("copy fail:", err));
+                    .then(() => alert("Copy completed!"))
+                    .catch((err) => console.error("Copy failed:", err));
             };
+
+            viewPopupButton.onclick = () => openPopup(prettyJSON);
         } catch (error) {
             // JSON 변환 실패 시
-            outputElement.innerHTML = "<p class='error'>The JSON string is invalid.</p>";
+            displayErrorMessage("The JSON string is invalid or improperly formatted."); // 오류 메시지
             copyButton.style.display = "none"; // 복사 버튼 숨기기
         }
     });
 });
 
-// ===== detectAndProcessJSONString 수정 =====
-function detectAndProcessJSONString(data) {
-    // 끝에 붙은 쓸모없는 쉼표 제거
-    data = removeTrailingComma(data);
+// popup 기능
+function openPopup(prettyJSON) {
+    const popupWindow = window.open("", "_blank", "width=600,height=400,scrollbars=yes");
+    if (popupWindow) {
+        popupWindow.document.write(`
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>JSON Viewer</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        margin: 0;
+                        padding: 16px;
+                        background-color: #282c34;
+                        color: #ffffff;
+                        overflow-wrap: break-word;
+                        white-space: pre-wrap;
+                    }
+                    header {
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                    }
+                    h2 {
+                        margin: 0;
+                        font-size: 20px;
+                    }
+                    pre {
+                        background: #1e1e1e;
+                        padding: 16px;
+                        border-radius: 4px;
+                        overflow-x: auto;
+                        font-family: monospace;
+                        color: #eee;
+                        max-height: 300px;
+                    }
+                </style>
+            </head>
+            <body>
+                <header>
+                    <h2>Pretty JSON Viewer</h2>
+                    <button id="popUpcopyBtn">Copy JSON</button>
+                </header>
+                <pre id="popupJson">${prettyJSON}</pre>
+            </body>
+            </html>
+        `);
+        popupWindow.document.close();
+    } else {
+        alert("Popup blocked. Please allow popups for this site.");
+    }
+}
 
-    // 싱글 쿼터로 감싸진 JSON 변환
+// ===== 오류 메시지 처리 로직 =====
+function displayErrorMessage(message) {
+    const outputElement = document.getElementById("output");
+    outputElement.innerHTML = `<p class='error'>${message}</p>`;
+    outputElement.classList.add("error-style"); // 붉은색 오류 스타일
+}
+
+function clearErrorMessage() {
+    const outputElement = document.getElementById("output");
+    outputElement.classList.remove("error-style"); // 오류 스타일 제거
+}
+
+// ===== JSON 문자열 처리 =====
+function detectAndProcessJSONString(data) {
+    // 1. 문자열 양 끝에 큰따옴표 있으면 제거
+    if (data.startsWith('"') && data.endsWith('"')) {
+        data = data.slice(1, -1);
+    }
+
+    // 2. 싱글 쿼터를 더블 쿼터로 변환
     data = convertSingleQuotesToDouble(data);
 
-    // 이중 따옴표로 감싸진 이스케이프 JSON 확인
-    if (data.startsWith('"') && data.endsWith('"')) {
-        // 이중 따옴표로 감싸져 있을 경우, JSON 내부 문자열로 변환
-        data = data.slice(1, -1).replace(/\\"/g, '"'); // 외부 "" 제거 및 내부 \" 처리
+    // 3. 키에 따옴표 추가
+    data = addQuotesToKeys(data);
+
+    // 4. 끝부분 불필요한 쉼표 제거
+    data = removeTrailingComma(data);
+
+    // 5. JSON 유효성 검사 및 반환
+    return validateAndCleanJSON(data);
+}
+
+// ===== JSON 유효성 검사 및 수정 =====
+function validateAndCleanJSON(data) {
+    try {
+        JSON.parse(data); // 기본적으로 JSON 유효성 검사
+        return data; // 유효한 경우 그대로 반환
+    } catch (error) {
+        throw new Error(error.message);
     }
-
-    // + 기호로 연결된 JSON 문자열 처리
-    data = preprocessConcatenatedJSON(data);
-
-    // 불필요한 공백 및 개행 제거
-    return unescapeJSONString(data);
 }
 
-// ===== 새로운 removeTrailingComma 함수 추가 =====
-// JSON 문자열 끝에 불필요한 쉼표 제거
-function removeTrailingComma(data) {
-    // 객체에서 끝 부분의 쉼표(,})를 제거
-    data = data.replace(/,\s*}/g, '}');
-    // 배열에서 끝 부분의 쉼표(,])를 제거
-    data = data.replace(/,\s*]/g, ']');
-    return data;
-}
-
-// ===== 기존 기타 함수 =====
-function convertSingleQuotesToDouble(data) {
-    return data.replace(/'/g, '"');
-}
-
-function prettyFormatJSON(data) {
-    const parsedJSON = JSON.parse(data);
-
-    // JSON.stringify 함수로 JSON 포맷 수행
-    return JSON.stringify(parsedJSON, (key, value) => {
-        if (Array.isArray(value)) {
-            // 배열일 경우 한 줄로 출력 처리
-            return JSON.stringify(value);
-        }
-        return value; // 기본 처리
-    }, 2);
-}
-
-function preprocessConcatenatedJSON(data) {
-    return data.replace(/\s*\+\s*/g, '');
-}
-
-function unescapeJSONString(data) {
-    return data
-        .replace(/\\n/g, '')
-        .replace(/\\t/g, '')
-        .replace(/\\r/g, '')
-        .trim();
-}
-
-function fixInvalidJSON(data) {
-    const fixedData = data.replace(/([{,]\s*)([a-zA-Z가-힣0-9_]+)\s*:/g, (_, start, key) => {
-        const fixedKey = `"${key}"`;
+// ===== 키에 따옴표 추가 =====
+function addQuotesToKeys(data) {
+    // JSON 표준에 맞지 않는 키에 따옴표 추가 (따옴표 없는 키를 감싸기)
+    return data.replace(/([{,]\s*)([a-zA-Z가-힣0-9_]+)\s*:/g, (_, start, key) => {
+        const fixedKey = `"${key}"`; // 키를 더블 쿼터로 감싸기
         return `${start}${fixedKey}:`;
     });
-
-    return fixedData.replace(/:\s*([a-zA-Z가-힣_][^,{}\[\]\s]*)/g, (_, value) => {
-        if (/^(true|false|null|[\[{]|[\]}]|-?\d+(\.\d+)?$)/.test(value)) {
-            return `: ${value}`;
-        }
-        return `: "${value}"`;
-    });
 }
 
-function isJSON(data) {
-    try {
-        JSON.parse(data);
-        return true;
-    } catch {
-        return false;
-    }
+// ===== JSON 포맷팅 =====
+function prettyFormatJSON(data) {
+    const parsedJSON = JSON.parse(data); // 파싱
+
+    // JSON.stringify 함수로 JSON 포맷 처리
+    return JSON.stringify(parsedJSON, null, 2); // 들여쓰기 포함한 구조 반환
+}
+
+// ===== 기타 문자열 처리 함수 =====
+function convertSingleQuotesToDouble(data) {
+    return data.replace(/'/g, '"'); // 싱글 쿼터 -> 더블 쿼터
+}
+
+function removeTrailingComma(data) {
+    return data
+        .replace(/,\s*}/g, '}') // 객체 내 쉼표 제거
+        .replace(/,\s*]/g, ']'); // 배열 내 쉼표 제거
 }
