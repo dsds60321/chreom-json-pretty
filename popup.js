@@ -5,7 +5,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const copyButton = document.getElementById("copyBtn");
     const viewPopupButton = document.getElementById("viewPopupBtn");
 
-
     // "Pretty JSON" 버튼 클릭 이벤트
     prettyButton.addEventListener("click", () => {
         const inputText = jsonInput.value.trim(); // 입력된 JSON 문자열 가져오기
@@ -40,7 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
             viewPopupButton.onclick = () => openPopup(prettyJSON);
         } catch (error) {
             // JSON 변환 실패 시
-            displayErrorMessage("The JSON string is invalid or improperly formatted."); // 오류 메시지
+            displayErrorMessage(error.message); // 오류 메시지
             copyButton.style.display = "none"; // 복사 버튼 숨기기
         }
     });
@@ -71,10 +70,18 @@ function openPopup(prettyJSON) {
                         display: flex;
                         align-items: center;
                         justify-content: space-between;
+                        margin-bottom: 16px;
                     }
-                    h2 {
-                        margin: 0;
-                        font-size: 20px;
+                    button {
+                        background-color: #4CAF50;
+                        color: white;
+                        border: none;
+                        padding: 10px 16px;
+                        border-radius: 4px;
+                        cursor: pointer;
+                    }
+                    button:hover {
+                        background-color: #45a049;
                     }
                     pre {
                         background: #1e1e1e;
@@ -90,7 +97,6 @@ function openPopup(prettyJSON) {
             <body>
                 <header>
                     <h2>Pretty JSON Viewer</h2>
-                    <button id="popUpcopyBtn">Copy JSON</button>
                 </header>
                 <pre id="popupJson">${prettyJSON}</pre>
             </body>
@@ -116,6 +122,12 @@ function clearErrorMessage() {
 
 // ===== JSON 문자열 처리 =====
 function detectAndProcessJSONString(data) {
+
+    // 개행 처리
+    data = data.replaceAll('\\n' , '');
+
+    data = data.replaceAll('\\' , '');
+
     // 1. 문자열 양 끝에 큰따옴표 있으면 제거
     if (data.startsWith('"') && data.endsWith('"')) {
         data = data.slice(1, -1);
